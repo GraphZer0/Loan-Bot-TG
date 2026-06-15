@@ -1,0 +1,165 @@
+@startuml
+title Loan Telegram Bot - Class Diagram
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "bot" {
+    class LoanTelegramBot {
+        - String botUsername
+        - BotMessageHandler messageHandler
+        + getBotUsername() String
+        + onUpdateReceived(Update update) void
+    }
+
+    class BotMessageHandler {
+        - LoanService loanService
+        - UserSessionStorage sessionStorage
+        - PaymentScheduleFormatter scheduleFormatter
+        - HistoryFormatter historyFormatter
+        + handle(long userId, String text) String
+    }
+
+    class UserSessionStorage {
+        - Map<Long, UserSession> sessions
+        + getSession(long userId) UserSession
+        + clearSession(long userId) void
+    }
+
+    class UserSession {
+        - UserState state
+        - BigDecimal amount
+        - Integer months
+        - BigDecimal annualRate
+        - PaymentType paymentType
+        + clear() void
+    }
+
+    enum UserState {
+        NONE
+        WAITING_AMOUNT
+        WAITING_MONTHS
+        WAITING_RATE
+        WAITING_PAYMENT_TYPE
+    }
+}
+
+package "model" {
+    class LoanRequest {
+        - long userId
+        - BigDecimal amount
+        - int months
+        - BigDecimal annualRate
+        - PaymentType paymentType
+    }
+
+    class PaymentScheduleItem {
+        - int month
+        - BigDecimal totalPayment
+        - BigDecimal principalPayment
+        - BigDecimal interestPayment
+        - BigDecimal remainingDebt
+    }
+
+    enum PaymentType {
+        ANNUITY
+        DIFFERENTIATED
+    }
+}
+
+package "calculator" {
+    interface PaymentCalculator {
+        + calculate(LoanRequest request) List<PaymentScheduleItem>
+    }
+
+    class AnnuityPaymentCalculator {
+        + calculate(LoanRequest request) List<PaymentScheduleItem>
+    }
+
+    class DifferentiatedPaymentCalculator {
+        + calculate(LoanRequest request) List<PaymentScheduleItem>
+    }
+
+    class PaymentCalculatorFactory {
+        + create(PaymentType paymentType) PaymentCalculator
+    }
+}
+
+package "repository" {
+    interface LoanRequestRepository {
+        + save(LoanRequest request) void
+        + findByUserId(long userId) List<LoanRequest>
+        + findAll() List<LoanRequest>
+    }
+
+    class InMemoryLoanRequestRepository {
+        - Map<Long, List<LoanRequest>> requestsByUserId
+        + save(LoanRequest request) void
+        + findByUserId(long userId) List<LoanRequest>
+        + findAll() List<LoanRequest>
+    }
+}
+
+package "service" {
+    class LoanService {
+        - PaymentCalculatorFactory calculatorFactory
+        - LoanRequestRepository loanRequestRepository
+        + calculateSchedule(LoanRequest request) List<PaymentScheduleItem>
+        + getUserHistory(long userId) List<LoanRequest>
+        + getAllRequests() List<LoanRequest>
+    }
+
+    class AnalyticsService {
+        - LoanRequestRepository loanRequestRepository
+        + countAllRequests() long
+        + countByPaymentType() Map<PaymentType, Long>
+        + filterByAmount(BigDecimal minAmount, BigDecimal maxAmount) List<LoanRequest>
+        + countByLoanTerm() Map<Integer, Long>
+    }
+}
+
+package "formatter" {
+    class PaymentScheduleFormatter {
+        + format(List<PaymentScheduleItem> schedule) String
+    }
+
+    class HistoryFormatter {
+        + format(List<LoanRequest> history) String
+    }
+
+    class AnalyticsFormatter {
+        + format(long totalRequests, Map<PaymentType, Long> requestsByPaymentType, Map<Integer, Long> requestsByLoanTerm) String
+    }
+}
+
+LoanTelegramBot --> BotMessageHandler
+
+BotMessageHandler --> LoanService
+BotMessageHandler --> UserSessionStorage
+BotMessageHandler --> PaymentScheduleFormatter
+BotMessageHandler --> HistoryFormatter
+
+UserSessionStorage --> UserSession
+UserSession --> UserState
+UserSession --> PaymentType
+
+LoanService --> PaymentCalculatorFactory
+LoanService --> LoanRequestRepository
+
+AnalyticsService --> LoanRequestRepository
+
+PaymentCalculatorFactory --> PaymentCalculator
+PaymentCalculator <|.. AnnuityPaymentCalculator
+PaymentCalculator <|.. DifferentiatedPaymentCalculator
+
+LoanRequestRepository <|.. InMemoryLoanRequestRepository
+
+LoanRequest --> PaymentType
+PaymentCalculator --> LoanRequest
+PaymentCalculator --> PaymentScheduleItem
+
+PaymentScheduleFormatter --> PaymentScheduleItem
+HistoryFormatter --> LoanRequest
+AnalyticsFormatter --> PaymentType
+
+@enduml
