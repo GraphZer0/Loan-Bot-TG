@@ -17,13 +17,38 @@ package "bot" {
         - UserSessionStorage sessionStorage
         - PaymentScheduleFormatter scheduleFormatter
         - HistoryFormatter historyFormatter
-        + handle(long userId, String text) String
+        - AnalyticsService analyticsService
+        - AnalyticsFormatter analyticsFormatter
+        - ManagerAuthService managerAuthService
+        - ManagerSessionStorage managerSessionStorage
+        + handle(long userId, String text) BotResponse
+        + handleCallback(long userId, String callbackData) BotResponse
+    }
+
+    class BotResponse {
+        - String text
+        - List<List<BotButton>> keyboard
+        + text(String text) BotResponse
+        + withKeyboard(String text, List<List<BotButton>> keyboard) BotResponse
+        + hasKeyboard() boolean
+    }
+
+    class BotButton <<record>> {
+        + String label
+        + String callbackData
     }
 
     class UserSessionStorage {
         - Map<Long, UserSession> sessions
         + getSession(long userId) UserSession
         + clearSession(long userId) void
+    }
+
+    class ManagerSessionStorage {
+        - Set<Long> authorizedManagers
+        + authorize(long userId) void
+        + revoke(long userId) void
+        + isAuthorized(long userId) boolean
     }
 
     class UserSession {
@@ -113,8 +138,16 @@ package "service" {
         - LoanRequestRepository loanRequestRepository
         + countAllRequests() long
         + countByPaymentType() Map<PaymentType, Long>
+        + filter(BigDecimal minAmount, BigDecimal maxAmount, PaymentType paymentType) List<LoanRequest>
         + filterByAmount(BigDecimal minAmount, BigDecimal maxAmount) List<LoanRequest>
+        + filterByPaymentType(PaymentType paymentType) List<LoanRequest>
         + countByLoanTerm() Map<Integer, Long>
+    }
+
+    class ManagerAuthService {
+        - String managerLogin
+        - String managerPassword
+        + authenticate(String login, String password) boolean
     }
 }
 
@@ -128,16 +161,24 @@ package "formatter" {
     }
 
     class AnalyticsFormatter {
-        + format(long totalRequests, Map<PaymentType, Long> requestsByPaymentType, Map<Integer, Long> requestsByLoanTerm) String
+        + format(long totalRequests, Map<PaymentType,Long> byType, Map<Integer,Long> byTerm) String
     }
 }
 
 LoanTelegramBot --> BotMessageHandler
+LoanTelegramBot --> BotResponse
 
 BotMessageHandler --> LoanService
 BotMessageHandler --> UserSessionStorage
 BotMessageHandler --> PaymentScheduleFormatter
 BotMessageHandler --> HistoryFormatter
+BotMessageHandler --> AnalyticsService
+BotMessageHandler --> AnalyticsFormatter
+BotMessageHandler --> ManagerAuthService
+BotMessageHandler --> ManagerSessionStorage
+BotMessageHandler --> BotResponse
+
+BotResponse --> BotButton
 
 UserSessionStorage --> UserSession
 UserSession --> UserState

@@ -7,13 +7,22 @@ import java.util.List;
 public class HistoryFormatter {
 
     public String format(List<LoanRequest> history) {
+        return format(history, "История ваших запросов:\n\n", "История запросов пока пустая.");
+    }
+
+    /**
+     * Форматирует произвольный список заявок (используется и для /history,
+     * и для менеджерской команды /filter) с настраиваемым заголовком и
+     * сообщением на случай пустого списка.
+     */
+    public String format(List<LoanRequest> history, String title, String emptyMessage) {
         if (history.isEmpty()) {
-            return "История запросов пока пустая.";
+            return emptyMessage;
         }
 
         StringBuilder builder = new StringBuilder();
 
-        builder.append("История ваших запросов:\n\n");
+        builder.append(title);
 
         for (int i = 0; i < history.size(); i++) {
             LoanRequest request = history.get(i);

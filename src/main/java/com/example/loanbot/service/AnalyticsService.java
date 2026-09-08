@@ -30,12 +30,25 @@ public class AnalyticsService {
                 ));
     }
 
-    public List<LoanRequest> filterByAmount(BigDecimal minAmount, BigDecimal maxAmount) {
+    /**
+     * Единая точка фильтрации по сумме и/или типу платежа.
+     * Любой из параметров может быть null — тогда соответствующее условие не применяется.
+     */
+    public List<LoanRequest> filter(BigDecimal minAmount, BigDecimal maxAmount, PaymentType paymentType) {
         return loanRequestRepository.findAll()
                 .stream()
-                .filter(request -> request.getAmount().compareTo(minAmount) >= 0)
-                .filter(request -> request.getAmount().compareTo(maxAmount) <= 0)
+                .filter(request -> minAmount == null || request.getAmount().compareTo(minAmount) >= 0)
+                .filter(request -> maxAmount == null || request.getAmount().compareTo(maxAmount) <= 0)
+                .filter(request -> paymentType == null || request.getPaymentType() == paymentType)
                 .toList();
+    }
+
+    public List<LoanRequest> filterByAmount(BigDecimal minAmount, BigDecimal maxAmount) {
+        return filter(minAmount, maxAmount, null);
+    }
+
+    public List<LoanRequest> filterByPaymentType(PaymentType paymentType) {
+        return filter(null, null, paymentType);
     }
 
     public Map<Integer, Long> countByLoanTerm() {

@@ -44,3 +44,9 @@ build/
 application.properties
 application.yml
 .DS_Store
+
+# Файл базы данных SQLite (реальные данные пользователей бота, задаётся через DB_PATH)
+*.db
+
+# Classpath, сгенерированный mvn dependency:build-classpath (специфичен для окружения)
+cp.txt
